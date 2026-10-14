@@ -20,29 +20,33 @@ export const WeighingModal: React.FC<{
 
   const [weightKg, setWeightKg] = useState<number>(order?.actualWeightKg || 25);
   const [paymentMode, setPaymentMode] = useState<PaymentStatus>('paid_upi_demo');
-  const [notes, setNotes] = useState<string>('Weighed and verified on digital scale.');
+  const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!order) return null;
 
   const agreedRate = order.agreedRatePerKg;
   const calculatedTotal = Math.round(weightKg * agreedRate);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (weightKg <= 0) return;
     setIsSubmitting(true);
-
-    setTimeout(() => {
-      recordWeighingAndSettle({
+    setSubmitError(null);
+    try {
+      await recordWeighingAndSettle({
         orderId: order.id,
         actualWeightKg: Number(weightKg),
         paymentStatus: paymentMode,
         transactionNotes: notes,
       });
-      setIsSubmitting(false);
       onClose();
-    }, 400);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not settle this order.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -72,6 +76,7 @@ export const WeighingModal: React.FC<{
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
           
           {/* Rate reminder banner */}
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-mint-50 border border-forest-100 text-xs">
@@ -220,4 +225,3 @@ export const WeighingModal: React.FC<{
     </div>
   );
 };
-

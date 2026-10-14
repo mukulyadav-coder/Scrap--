@@ -28,7 +28,8 @@ export const AdminDashboard: React.FC = () => {
     orders, 
     listings, 
     language, 
-    t 
+    t,
+    showToast,
   } = useApp();
 
   const [activeSection, setActiveSection] = useState<'verification' | 'rates' | 'disputes'>('verification');
@@ -37,6 +38,7 @@ export const AdminDashboard: React.FC = () => {
   const [editingRateId, setEditingRateId] = useState<string | null>(null);
   const [editMin, setEditMin] = useState<number>(0);
   const [editMax, setEditMax] = useState<number>(0);
+  const [resolutionDrafts, setResolutionDrafts] = useState<Record<string, string>>({});
 
   const pendingVerification = verificationRequests.filter(v => v.status === 'pending');
   const openComplaints = complaints.filter(c => c.status !== 'resolved');
@@ -50,9 +52,33 @@ export const AdminDashboard: React.FC = () => {
     setEditMax(rate.maxPrice);
   };
 
-  const handleSaveRate = (rateId: string) => {
-    updateIndicativeRate(rateId, editMin, editMax);
-    setEditingRateId(null);
+  const handleSaveRate = async (rateId: string) => {
+    try {
+      await updateIndicativeRate(rateId, editMin, editMax);
+      setEditingRateId(null);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not update the rate.', 'error');
+    }
+  };
+
+  const handleAdminAction = (action: Promise<void>) => {
+    void action.catch((error: unknown) => {
+      showToast(error instanceof Error ? error.message : 'The requested admin action failed.', 'error');
+    });
+  };
+
+  const handleResolveComplaint = async (complaintId: string) => {
+    const notes = resolutionDrafts[complaintId]?.trim();
+    if (!notes) {
+      showToast('Enter the resolution notes before resolving the complaint.', 'error');
+      return;
+    }
+    try {
+      await resolveComplaint(complaintId, notes);
+      setResolutionDrafts((drafts) => ({ ...drafts, [complaintId]: '' }));
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not resolve the complaint.', 'error');
+    }
   };
 
   return (
@@ -82,9 +108,9 @@ export const AdminDashboard: React.FC = () => {
             Total Transacted GMV
           </span>
           <div className="text-2xl font-black font-mono text-forest-900 mt-1">
-            ₹{Math.max(totalGMV, 2450000).toLocaleString('en-IN')}
+            ₹{totalGMV.toLocaleString('en-IN')}
           </div>
-          <span className="text-[11px] text-emerald-700 font-semibold">Across all 4 user roles</span>
+          <span className="text-[11px] text-emerald-700 font-semibold">From recorded completed settlements</span>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-card">
@@ -92,9 +118,9 @@ export const AdminDashboard: React.FC = () => {
             Material Recycled
           </span>
           <div className="text-2xl font-black font-mono text-forest-900 mt-1">
-            {(totalVolumeKg / 1000 + 125).toFixed(1)} <span className="text-xs font-normal text-slate-500">Tonnes</span>
+            {(totalVolumeKg / 1000).toFixed(2)} <span className="text-xs font-normal text-slate-500">Tonnes</span>
           </div>
-          <span className="text-[11px] text-emerald-700 font-semibold">Diverted from Delhi landfills</span>
+          <span className="text-[11px] text-emerald-700 font-semibold">From recorded completed orders</span>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-card">
@@ -112,7 +138,7 @@ export const AdminDashboard: React.FC = () => {
             Dispute Resolution
           </span>
           <div className="text-2xl font-black font-mono text-slate-900 mt-1">
-            99.4% Clear
+            {complaints.length - openComplaints.length} / {complaints.length} resolved
           </div>
           <span className="text-[11px] text-slate-500">{openComplaints.length} open tickets</span>
         </div>
@@ -198,14 +224,14 @@ export const AdminDashboard: React.FC = () => {
                   {req.status === 'pending' ? (
                     <>
                       <button
-                        onClick={() => reviewVerification(req.id, 'approved')}
+                        onClick={() => handleAdminAction(reviewVerification(req.id, 'approved'))}
                         className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-forest-800 hover:bg-forest-900 text-white font-bold text-xs shadow-xs transition-colors"
                       >
                         <Check className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Approve KYC</span>
                       </button>
                       <button
-                        onClick={() => reviewVerification(req.id, 'rejected')}
+                        onClick={() => handleAdminAction(reviewVerification(req.id, 'rejected'))}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200 transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -360,13 +386,26 @@ export const AdminDashboard: React.FC = () => {
                 </p>
 
                 {c.status !== 'resolved' ? (
-                  <div className="flex justify-end gap-2 pt-1">
+                  <div className="space-y-2 pt-1">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-semibold text-slate-600">Resolution notes</span>
+                      <textarea
+                        value={resolutionDrafts[c.id] || ''}
+                        onChange={(event) => setResolutionDrafts((drafts) => ({ ...drafts, [c.id]: event.target.value }))}
+                        maxLength={3000}
+                        required
+                        className="w-full rounded-xl border border-slate-200 p-2.5 text-xs"
+                        placeholder="Record the investigation outcome and actions taken."
+                      />
+                    </label>
+                    <div className="flex justify-end gap-2">
                     <button
-                      onClick={() => resolveComplaint(c.id, 'Standard 10kg calibration weight verified. Dispute amicably settled with credit voucher.')}
+                      onClick={() => void handleResolveComplaint(c.id)}
                       className="px-3 py-1.5 rounded-xl bg-forest-800 hover:bg-forest-900 text-white font-bold text-xs"
                     >
-                      Arbitrate & Mark Resolved
+                      Save Resolution
                     </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-emerald-700 font-medium text-[11px]">
@@ -382,4 +421,3 @@ export const AdminDashboard: React.FC = () => {
     </div>
   );
 };
-

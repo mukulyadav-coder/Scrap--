@@ -8,6 +8,8 @@ import { WeighingModal } from './components/modals/WeighingModal';
 import { SubmitOfferModal } from './components/modals/SubmitOfferModal';
 import { IndicativeRateBoard } from './components/common/IndicativeRateBoard';
 import { LoginPage } from './components/auth/LoginPage';
+import { useAuth } from './context/AuthContext';
+import { toDashboardRole } from './services/auth';
 
 // Seller views
 import { SellerDashboard } from './components/seller/SellerDashboard';
@@ -33,45 +35,47 @@ import { Order, WasteListing } from './types';
 export const MainApp: React.FC = () => {
   const { 
     role, 
+    setRole,
     activeTab, 
-    setActiveTab,
     selectedReceiptOrder, 
     setSelectedReceiptOrder, 
-    language 
   } = useApp();
+  const { status: authStatus, user } = useAuth();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [weighingOrder, setWeighingOrder] = useState<Order | null>(null);
   const [offerListing, setOfferListing] = useState<WasteListing | null>(null);
 
-  // Sync hash #login with activeTab
   useEffect(() => {
-    const handleHash = () => {
-      if (window.location.hash === '#login') {
-        setActiveTab('login');
-      }
-    };
-    if (window.location.hash === '#login') {
-      setActiveTab('login');
+    if (authStatus === 'authenticated' && user && role !== toDashboardRole(user.role)) {
+      setRole(toDashboardRole(user.role));
     }
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
-  }, [setActiveTab]);
+  }, [authStatus, user, role, setRole]);
 
-  // If login view is active, render full-screen split LoginPage
-  if (activeTab === 'login') {
+  if (authStatus === 'loading') {
     return (
-      <>
-        <LoginPage 
-          onBack={() => {
-            setActiveTab('dashboard');
-            if (window.location.hash === '#login') {
-              window.history.pushState(null, '', window.location.pathname);
-            }
-          }} 
-        />
-        <Toast />
-      </>
+      <main className="grid min-h-screen place-items-center bg-slate-50" aria-live="polite">
+        <div className="flex items-center gap-3 text-sm font-medium text-teal-900">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-700 border-t-transparent" />
+          Restoring your ScrapSetu session…
+        </div>
+      </main>
+    );
+  }
+
+  if (authStatus !== 'authenticated' || !user) {
+    return <LoginPage />;
+  }
+
+  const expectedRole = toDashboardRole(user.role);
+  if (role !== expectedRole) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-slate-50" aria-live="polite">
+        <div className="flex items-center gap-3 text-sm font-medium text-teal-900">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-700 border-t-transparent" />
+          Loading your dashboard…
+        </div>
+      </main>
     );
   }
 
@@ -121,6 +125,8 @@ export const MainApp: React.FC = () => {
         case 'dashboard':
         case 'published_rates':
           return <BulkBuyerDashboard />;
+        case 'feed':
+          return <KabadiwalaFeed onOpenOfferModal={(list) => setOfferListing(list)} />;
         case 'procurement':
         case 'bulk_market':
           return <KabadiwalaBulkMarket />;

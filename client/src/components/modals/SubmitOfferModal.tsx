@@ -17,7 +17,7 @@ export const SubmitOfferModal: React.FC<{
   listing: WasteListing | null; 
   onClose: () => void; 
 }> = ({ listing, onClose }) => {
-  const { submitOffer, indicativeRates, t } = useApp();
+  const { submitOffer, indicativeRates } = useApp();
 
   // Find indicative rate for reference
   const matchingRate = indicativeRates.find(r => r.category === listing?.category);
@@ -25,28 +25,32 @@ export const SubmitOfferModal: React.FC<{
 
   const [offeredRate, setOfferedRate] = useState<number>(defaultRate);
   const [proposedTime, setProposedTime] = useState<string>('Today between 4:00 PM - 6:00 PM');
-  const [note, setNote] = useState<string>('Digital scale certified. Instant payment on pickup.');
+  const [note, setNote] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!listing) return null;
 
   const estimatedTotal = Math.round(offeredRate * listing.estimatedWeightKg);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (offeredRate <= 0) return;
     setIsSubmitting(true);
-
-    setTimeout(() => {
-      submitOffer({
+    setSubmitError(null);
+    try {
+      await submitOffer({
         listingId: listing.id,
         offeredRatePerKg: Number(offeredRate),
         proposedPickupTime: proposedTime,
         note,
       });
-      setIsSubmitting(false);
       onClose();
-    }, 350);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not submit the offer.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -99,6 +103,7 @@ export const SubmitOfferModal: React.FC<{
 
         {/* Offer Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
           
           {/* Rate per kg */}
           <div className="space-y-1.5">
@@ -212,4 +217,3 @@ export const SubmitOfferModal: React.FC<{
     </div>
   );
 };
-

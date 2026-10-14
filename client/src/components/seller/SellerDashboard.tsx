@@ -30,6 +30,7 @@ export const SellerDashboard: React.FC = () => {
   const userListings = listings.filter(l => l.sellerId === currentUser.id);
   const activeOrders = orders.filter(o => o.sellerId === currentUser.id && (o.status === 'pickup_scheduled' || o.status === 'accepted'));
   const completedOrders = orders.filter(o => o.sellerId === currentUser.id && o.status === 'completed');
+  const totalEarnings = completedOrders.reduce((total, order) => total + (order.finalAmount || 0), 0);
 
   const treesSaved = (currentUser.greenScoreKg / 30).toFixed(1);
   const co2Diverted = (currentUser.greenScoreKg * 1.4).toFixed(0);
@@ -107,7 +108,7 @@ export const SellerDashboard: React.FC = () => {
             <span className="text-sm font-bold text-slate-700">₹</span>
           </div>
           <div className="text-2xl font-black font-mono text-forest-900 mt-2">
-            ₹{currentUser.totalEarningsOrSpend}
+            ₹{totalEarnings.toLocaleString('en-IN')}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
             Across {currentUser.completedPickups} pickups
@@ -132,9 +133,9 @@ export const SellerDashboard: React.FC = () => {
             <span className="text-[10px] font-bold uppercase tracking-wider">Verification</span>
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-base font-bold text-emerald-700 flex items-center gap-1.5 mt-2">
-            <CheckCircle2 className="w-4 h-4" />
-            Verified Resident
+          <div className={`text-base font-bold flex items-center gap-1.5 mt-2 ${currentUser.isVerified ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {currentUser.isVerified ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+            {currentUser.isVerified ? 'Verified Resident' : 'Not yet verified'}
           </div>
           <div className="text-[11px] text-slate-400 mt-1 truncate">
             {currentUser.locality}
@@ -297,4 +298,3 @@ export const SellerDashboard: React.FC = () => {
     </div>
   );
 };
-

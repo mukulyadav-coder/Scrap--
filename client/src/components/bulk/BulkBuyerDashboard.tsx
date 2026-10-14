@@ -20,9 +20,7 @@ export const BulkBuyerDashboard: React.FC = () => {
     currentUser, 
     bulkRequirements, 
     publishBulkRequirement, 
-    listings, 
-    language, 
-    t 
+    orders,
   } = useApp();
 
   const [isPublishing, setIsPublishing] = useState(false);
@@ -31,22 +29,32 @@ export const BulkBuyerDashboard: React.FC = () => {
   const [minQty, setMinQty] = useState(500);
   const [offeredRate, setOfferedRate] = useState(16.0);
   const [purityGrade, setPurityGrade] = useState('A-Grade Dry (<5% moisture)');
-  const [locality, setLocality] = useState(currentUser.locality || 'Okhla Industrial Area Phase-II');
+  const [locality, setLocality] = useState(currentUser.locality);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const myRequirements = bulkRequirements.filter(b => b.buyerId === currentUser.id);
+  const myOrders = orders.filter((order) => order.buyerId === currentUser.id);
+  const completedOrders = myOrders.filter((order) => order.status === 'completed');
+  const totalSourcedKg = completedOrders.reduce((total, order) => total + (order.actualWeightKg || 0), 0);
+  const scheduledOrders = myOrders.filter((order) => order.status === 'pickup_scheduled');
 
-  const handlePublish = (e: React.FormEvent) => {
+  const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
-    publishBulkRequirement({
-      category: newCat,
-      subcategory: newSubcat,
-      minQuantityKg: Number(minQty),
-      offeredRatePerKg: Number(offeredRate),
-      purityGrade,
-      locality,
-      validTill: '2026-11-15',
-    });
-    setIsPublishing(false);
+    setSubmitError(null);
+    try {
+      await publishBulkRequirement({
+        category: newCat,
+        subcategory: newSubcat,
+        minQuantityKg: Number(minQty),
+        offeredRatePerKg: Number(offeredRate),
+        purityGrade,
+        locality,
+        validTill: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      });
+      setIsPublishing(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not publish the requirement.');
+    }
   };
 
   return (
@@ -57,10 +65,10 @@ export const BulkBuyerDashboard: React.FC = () => {
         <div className="relative z-10 max-w-2xl space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
             <Building2 className="w-3.5 h-3.5" />
-            Industrial Aggregator ID: {currentUser.id} • GST: {currentUser.gstNumber}
+            Procurement account: {currentUser.id} • {currentUser.locality}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {currentUser.businessName}
+            {currentUser.businessName || currentUser.name}
           </h1>
           <p className="text-xs sm:text-sm text-slate-300">
             Factory gate procurement desk. Sourcing high-volume recyclable fractions from local kabadiwala networks.
@@ -79,15 +87,16 @@ export const BulkBuyerDashboard: React.FC = () => {
       </div>
 
       {/* KPI Stats */}
+      {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-card">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Total Sourced Volume
           </span>
           <div className="text-2xl font-black font-mono text-forest-900 mt-1">
-            28.4 <span className="text-xs font-normal text-slate-500">Tonnes</span>
+            {(totalSourcedKg / 1000).toFixed(2)} <span className="text-xs font-normal text-slate-500">Tonnes</span>
           </div>
-          <span className="text-[11px] text-emerald-700 font-semibold">Processed this quarter</span>
+          <span className="text-[11px] text-emerald-700 font-semibold">{totalSourcedKg} kg in completed orders</span>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-card">
@@ -105,9 +114,9 @@ export const BulkBuyerDashboard: React.FC = () => {
             Supplier Network
           </span>
           <div className="text-2xl font-black font-mono text-purple-900 mt-1">
-            48 Collectors
+            {completedOrders.length} completed orders
           </div>
-          <span className="text-[11px] text-purple-700 font-semibold">Connected across Delhi NCR</span>
+          <span className="text-[11px] text-purple-700 font-semibold">Recorded for this account</span>
         </div>
 
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-card">
@@ -115,9 +124,9 @@ export const BulkBuyerDashboard: React.FC = () => {
             Weighbridge Accuracy
           </span>
           <div className="text-2xl font-black font-mono text-emerald-600 mt-1">
-            99.9%
+            {scheduledOrders.length}
           </div>
-          <span className="text-[11px] text-slate-500">ISO-certified electronic scale</span>
+          <span className="text-[11px] text-slate-500">Orders awaiting collection</span>
         </div>
       </div>
 
@@ -267,4 +276,3 @@ export const BulkBuyerDashboard: React.FC = () => {
     </div>
   );
 };
-

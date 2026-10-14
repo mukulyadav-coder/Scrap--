@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.venv/
+.test-venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+/data/csv/*.csv
+/data/csv/*.lock
+/data/csv/*.bak
+/data/csv/*.tmp
+/data/uploads/*
+/data/exports/*

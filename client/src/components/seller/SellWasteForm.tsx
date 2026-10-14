@@ -11,50 +11,25 @@ import {
   Info, 
   Sparkles, 
   FileText, 
-  Image as ImageIcon,
   ShieldCheck,
   Scale
 } from 'lucide-react';
 
 export const SellWasteForm: React.FC = () => {
-  const { createListing, currentUser, indicativeRates, language, t, setActiveTab } = useApp();
+  const { createListing, uploadImage, currentUser, indicativeRates, language, t, setActiveTab } = useApp();
 
   const [category, setCategory] = useState<MaterialCategory>('paper');
   const [subcategory, setSubcategory] = useState<string>('Newspaper & Books');
   const [estimatedWeightKg, setEstimatedWeightKg] = useState<number>(20);
   const [condition, setCondition] = useState<ListingCondition>('clean_sorted');
-  const [locality, setLocality] = useState<string>(currentUser.locality || 'Green Park, New Delhi');
-  const [address, setAddress] = useState<string>(currentUser.address || 'B-4/122, Safdarjung Enclave');
+  const [locality, setLocality] = useState<string>(currentUser.locality);
+  const [address, setAddress] = useState<string>('');
   const [preferredSlot, setPreferredSlot] = useState<string>('Today, 4:00 PM - 6:00 PM');
   const [notes, setNotes] = useState<string>('');
-  const [photos, setPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=500&auto=format&fit=crop&q=80'
-  ]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [ewasteConfirmed, setEwasteConfirmed] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  const samplePhotosByCategory: Record<MaterialCategory, string[]> = {
-    paper: [
-      'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=500&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&auto=format&fit=crop&q=80',
-    ],
-    cardboard: [
-      'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=500&auto=format&fit=crop&q=80',
-    ],
-    plastic: [
-      'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=500&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=500&auto=format&fit=crop&q=80',
-    ],
-    metal: [
-      'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=500&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=500&auto=format&fit=crop&q=80',
-    ],
-    e_waste: [
-      'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1588508065123-287b28e013da?w=500&auto=format&fit=crop&q=80',
-    ],
-  };
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const categorySuboptions: Record<MaterialCategory, string[]> = {
     paper: ['Newspaper (Raddi)', 'Office White Paper', 'Books & Magazines', 'Shredded Documents'],
@@ -67,7 +42,6 @@ export const SellWasteForm: React.FC = () => {
   const handleCategorySelect = (cat: MaterialCategory) => {
     setCategory(cat);
     setSubcategory(categorySuboptions[cat][0]);
-    setPhotos([samplePhotosByCategory[cat][0]]);
     if (cat !== 'e_waste') {
       setEwasteConfirmed(false);
     }
@@ -76,30 +50,36 @@ export const SellWasteForm: React.FC = () => {
   const activeRate = indicativeRates.find(r => r.category === category);
   const isEwaste = category === 'e_waste';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isEwaste && !ewasteConfirmed) {
-      alert('Please acknowledge the E-Waste regulatory compliance declaration before submitting.');
+      setSubmitError('Please acknowledge the E-Waste regulatory compliance declaration before submitting.');
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      createListing({
+    setSubmitError(null);
+    try {
+      const uploadedPhotos = await Promise.all(selectedFiles.map((file) => uploadImage(file)));
+      await createListing({
         category,
         subcategory,
         estimatedWeightKg: Number(estimatedWeightKg),
         condition,
-        photos,
+        photos: uploadedPhotos,
         preferredSlot,
         notes,
         isEwaste,
         locality,
         address,
       });
-      setIsSubmitting(false);
+      setSelectedFiles([]);
       setActiveTab('my_listings');
-    }, 400);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Could not publish this listing.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -313,31 +293,35 @@ export const SellWasteForm: React.FC = () => {
             <span className="text-[11px] text-emerald-700 font-medium">Helps collectors give accurate quotes</span>
           </div>
 
-          {/* Photo gallery preview */}
-          <div className="flex items-center gap-3 overflow-x-auto pb-2">
-            {photos.map((url, idx) => (
-              <div key={idx} className="relative w-24 h-24 rounded-2xl overflow-hidden border border-slate-200 shrink-0">
-                <img src={url} alt="Scrap preview" className="w-full h-full object-cover" />
-                <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] px-1.5 py-0.2 rounded font-mono">
-                  Sample
-                </span>
-              </div>
-            ))}
-
-            {/* Quick sample photo cycle button */}
-            <button
-              type="button"
-              onClick={() => {
-                const samples = samplePhotosByCategory[category];
-                const nextPhoto = samples[(photos.length) % samples.length];
-                setPhotos(prev => [...prev, nextPhoto]);
+          <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 p-4 text-sm text-slate-600 hover:border-forest-500 hover:bg-forest-50/50">
+            <UploadCloud className="h-5 w-5 text-forest-700" />
+            <span>Select up to 8 image files (JPEG, PNG, or WebP; 5 MB each).</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="sr-only"
+              onChange={(event) => {
+                const files = Array.from(event.currentTarget.files || []);
+                event.currentTarget.value = '';
+                if (files.length > 8) {
+                  setSubmitError('Choose no more than 8 images.');
+                  return;
+                }
+                if (files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
+                  setSubmitError('Each image must be JPEG, PNG, or WebP and no larger than 5 MB.');
+                  return;
+                }
+                setSubmitError(null);
+                setSelectedFiles(files);
               }}
-              className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 hover:border-forest-500 hover:bg-forest-50/50 flex flex-col items-center justify-center text-slate-500 hover:text-forest-800 transition-colors shrink-0"
-            >
-              <UploadCloud className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-semibold text-center leading-tight">Add Photo</span>
-            </button>
-          </div>
+            />
+          </label>
+          {selectedFiles.length > 0 && (
+            <ul className="space-y-1 text-xs text-slate-600" aria-label="Selected listing photos">
+              {selectedFiles.map((file) => <li key={`${file.name}-${file.lastModified}`}>{file.name}</li>)}
+            </ul>
+          )}
         </div>
 
         {/* Step 4: Locality, Address and Preferred Slot */}
@@ -411,6 +395,7 @@ export const SellWasteForm: React.FC = () => {
         </div>
 
         {/* Submit Button */}
+        {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
         <button
           type="submit"
           disabled={isSubmitting || (isEwaste && !ewasteConfirmed)}
@@ -425,4 +410,3 @@ export const SellWasteForm: React.FC = () => {
     </div>
   );
 };
-

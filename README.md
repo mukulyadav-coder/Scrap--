@@ -1,90 +1,122 @@
-# Kabadiwala Connect (कबाड़ीवाला कनेक्ट)
-### Modern 2026 Digital Marketplace for Scrap, Recyclables & Circular Economy
+# ScrapSetu
 
-**Kabadiwala Connect** is a 2026 startup-quality, mobile-first responsive web application connecting households, offices, and shops selling recyclable waste with verified local scrap collectors (kabadiwalas), wholesale aggregators, and pollution control board-certified recycling partners.
+ScrapSetu is a responsive marketplace web client with an authenticated FastAPI
+backend for recyclable-material listings, offers, orders, and collection.
 
----
+## Implemented
 
-## 🌿 Key Innovations & Features
+- Login, registration, session restoration, logout, and role-based dashboards.
+- Public registration for Seller, Collector, Buyer, and Recycler. Admin accounts
+  are provisioned only by the backend; public Admin registration is rejected.
+- Authenticated listings, offers, offer acceptance, order settlement, rates,
+  bulk requirements, verification review, admin complaint resolution, and
+  collector inventory APIs.
+- Server-side ownership and role checks for marketplace actions.
+- Image upload to backend-local storage, with JPEG, PNG, and WebP validation.
+- Demo cash/UPI settlement records only; the app does not move real money.
 
-### 1. 2026 Fintech-Marketplace Design System
-- **Colors**: Deep Forest Green (`#166534`), Emerald Green (`#10B981`), Clean White, and Light Mint (`#F0FDF4`).
-- **Typography & Motion**: Plus Jakarta Sans & Inter, rounded cards, soft layered shadows (`shadow-soft`), smooth transitions.
-- **Responsive Layout**: Desktop sidebar navigation and native mobile bottom bar navigation.
-- **Bilingual Interface**: One-click instant toggle between **English** and **हिन्दी (Hindi)** across all actions, rates, and navigation.
+## Known limitations
 
-### 2. Multi-Role Ecosystem with Instant Demo Switching
-The header contains an instant 1-click **Role Switcher** allowing testers and judges to seamlessly experience all 4 personas:
-1. **👤 Seller (Rahul Sharma - Green Park, New Delhi)**
-   - Dashboard with Eco Footprint metrics (Trees saved, CO₂ diverted, earnings passbook).
-   - Doorstep Scrap Selling form with photo gallery, category selector, estimated weight slider, and condition grading.
-   - Separate **Regulated E-Waste** workflow with certified recycling partner compliance.
-   - **Compare Offers**: Side-by-side comparison of quotes from nearby kabadiwalas (Price/kg, Distance, Rating, Pickup speed).
-   - **Order Tracking**: Visual status stepper (*Pending → Accepted → Pickup Scheduled → Completed*).
-   - **Digital Scrap Receipt**: Downloadable and printable GST/municipal compliance receipt with QR code and environmental impact score.
-2. **🚴 Kabadiwala / Collector (Ramvilas Prasad - Hauz Khas / Malviya Nagar)**
-   - Real-time **Nearby Scrap Feed** with radius filters (<1.5 km, <3 km, <5 km) and photos.
-   - Direct quote submission (Custom ₹/kg quote, estimated total payout, proposed arrival time).
-   - **High-Contrast Digital Weighing Screen**: Touch-friendly on-site scale weight entry, real-time settlement calculator, and demo payment status (Cash on delivery / UPI QR).
-   - **Godown Inventory & Stockpile**: Track accumulated scrap categories, purchase costs, and ready-to-sell bulk bundles.
-   - **Bulk Buyer Margin Arbitrage**: Compare industrial factory gate buying prices against local collection costs and freight to compute net margin.
-3. **🏭 Bulk Buyer & Aggregator (Vikram Singhania - Apex Green Recyclers, Okhla)**
-   - Industrial factory gate procurement desk.
-   - Publish live buying rate cards with purity grades, minimum lot sizes (e.g. >500 kg), and delivery terms.
-   - Sourcing analytics and weighbridge verification.
-4. **🛡️ Platform Admin (Pooja Verma - Operations & Trust Hub)**
-   - Master KPI metrics: Total GMV transacted, volume recycled, dispute rate.
-   - **Verification Queue**: Review and approve/reject collector KYC documents (Aadhaar, Shop & Establishment, E-waste PCB licenses).
-   - **Mandi Rates Master Card**: Edit and publish daily indicative benchmark rates from Mayapuri, Naraina, and Bawana mandi clusters.
-   - **Dispute Resolution Desk**: Arbitrate weighing discrepancies, scale calibration audits, and record resolution notes.
+- Forgot/reset-password delivery and password-change endpoints do not exist;
+  the UI reports this instead of pretending a recovery request succeeded.
+- Verification submission, complaint reporting, profile editing, and support
+  ticket workflows are not yet connected to their backend APIs.
+- Recycler accounts use the buyer/procurement dashboard; recycler-specific
+  document workflows are not complete.
+- Uploads are on local disk and served as static files. Use private object
+  storage and an access-controlled delivery mechanism before production.
+- The configured CSV store is suitable for local development and small pilots,
+  not multi-instance production. PostgreSQL is not implemented, and no
+  automated backup/restore workflow is included.
+- Some dashboard analytics and market-facing copy are illustrative; they are
+  not independently verified external data.
+- The separate `server/` API on port 8000 is legacy and does not use the new
+  ScrapSetu authentication or authorization. Keep it local/demo-only; do not
+  expose it publicly.
 
----
+## Local setup
 
-## 🔄 Core End-to-End Workflow
+### 1. Configure the authenticated backend
 
-```
-[1. Seller creates listing] ──> [2. Nearby Kabadiwalas view feed] ──> [3. Kabadiwala submits quote]
-                                                                                │
-[6. Receipt Generated] <── [5. Weighing & Settle] <── [4. Seller accepts quote] <─┘
+In PowerShell:
+
+```powershell
+cd scrapsetu\backend
+Copy-Item .env.example .env
 ```
 
-1. **Listing Creation**: Seller selects category (e.g. Cardboard), estimated weight (22 kg), preferred time, and posts listing.
-2. **Offer Submission**: Collector in Malviya Nagar views listing 1.4 km away and offers ₹12.5/kg.
-3. **Offer Acceptance**: Seller compares offers, accepts Ramvilas's quote, scheduling the pickup.
-4. **On-Site Weighing**: Kabadiwala arrives, enters actual digital scale weight (e.g., 24.2 kg), selects payment method (Cash / UPI Demo), and confirms.
-5. **Settlement & Voucher**: System automatically computes ₹302.50, credits user green score (+24.2 kg, ~33.8 kg CO₂ saved), updates godown inventory, and generates the printable Digital Scrap Certificate.
+Set `JWT_SECRET` in `.env` to a unique random value of at least 32 characters.
+To provision an initial administrator, set both `ADMIN_SEED_EMAIL` and
+`ADMIN_SEED_PASSWORD` in this server-only file. The seed password must be at
+least 12 characters, include an uppercase letter and a digit, and be no more
+than 72 UTF-8 bytes. Never put these values in frontend code, README files, or
+source control. There are no universal demo credentials; each deployment must
+securely provision its own administrator.
 
----
+Install dependencies and start the API:
 
-## 🛠️ Technology Stack
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
+```
 
-- **Frontend**: React 19, Vite 8, TypeScript, Tailwind CSS, Lucide React.
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy, Pydantic, SQLite / PostgreSQL.
-- **Architecture**: Modular, zero-dependency local execution with resilient offline-first localStorage state sync and FastAPI REST endpoints.
+The API health check is `http://127.0.0.1:8001/api/health`; interactive API
+documentation is available at `http://127.0.0.1:8001/docs`.
 
----
+### 2. Start the web client
 
-## 🚀 How to Run
+In another PowerShell window:
 
-### Option 1: Frontend (Client)
-```bash
+```powershell
 cd client
+npm install
 npm run dev
 ```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Option 2: Backend (FastAPI Server)
-```bash
-cd server
-python -m uvicorn main:app --port 8000 --reload
+Open `http://localhost:5173`. Vite proxies `/api` to the ScrapSetu backend at
+`127.0.0.1:8001`. For a different backend origin, set `VITE_API_BASE_URL` to
+the API base including `/api` (for example `https://api.example.com/api`) and
+configure backend `CORS_ORIGINS` with the exact frontend origin.
+
+### 3. Admin login
+
+Use the email and password configured in the backend's `ADMIN_SEED_EMAIL` and
+`ADMIN_SEED_PASSWORD` values. The server creates that account at startup. These
+are deployment-specific credentials and are intentionally not included here.
+For the existing local development setup, use only the credentials supplied
+separately to the project owner; do not commit or copy the ignored
+`scrapsetu/backend/.env` file.
+
+## Deployment notes
+
+- Serve the API through the same site as the web app, or a same-site reverse
+  proxy. The refresh cookie is `HttpOnly` and `SameSite=Strict`; a cross-site
+  frontend/API deployment will prevent reliable session restoration.
+- Configure `CORS_ORIGINS`, `JWT_SECRET`, admin seed values, persistent CSV and
+  upload directories, and HTTPS in the deployment environment.
+- The Vite proxy is development-only. This repository does not include a
+  production Vercel-to-backend rewrite or provision persistent backend storage.
+- Do not deploy the legacy port-8000 service publicly until its endpoints have
+  authentication, authorization, and production-safe CORS.
+- Password reset, email/SMS delivery, production payment processing, durable
+  object storage, and database migration/backups remain deployment/product
+  work.
+
+## Validation
+
+```powershell
+cd client
+npm run build
+npm run lint
+
+cd ..\scrapsetu\backend
+python -m pytest
 ```
-View interactive Swagger API documentation at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
----
+The backend tests cover public roles, Admin registration rejection,
+authentication/session behavior, listing ownership, offer acceptance, and
+order settlement persistence.
 
-## ⚖️ Compliance & Disclaimers
-
-- **Indicative Rates**: All mandi prices are benchmark market estimates for reference only. Mutually agreed rates are finalized during pickup.
-- **E-Waste Rules 2022**: Electronic items are strictly routed to State Pollution Control Board (SPCB) certified recyclers.
-- **Verified Demo Payments**: Financial transactions operate in labeled demo status; no real bank deductions occur.
-
+See [scrapsetu/docs/architecture.md](scrapsetu/docs/architecture.md) for the
+API and storage architecture.

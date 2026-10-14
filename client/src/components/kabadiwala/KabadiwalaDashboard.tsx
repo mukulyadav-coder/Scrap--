@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { Order } from '../../types';
 import { 
   Truck, 
   Scale, 
@@ -16,7 +17,7 @@ import {
   Sparkles 
 } from 'lucide-react';
 
-export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: any) => void }> = ({ onOpenWeighing }) => {
+export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: Order) => void }> = ({ onOpenWeighing }) => {
   const { 
     currentUser, 
     listings, 
@@ -29,6 +30,8 @@ export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: any) => voi
   } = useApp();
 
   const pendingPickups = orders.filter(o => o.status === 'pickup_scheduled');
+  const completedOrders = orders.filter(o => o.status === 'completed');
+  const totalCollectedKg = completedOrders.reduce((total, order) => total + (order.actualWeightKg || 0), 0);
   const nearbyListings = listings.filter(l => l.status === 'pending');
   const totalGodownStockKg = inventory.reduce((acc, curr) => acc + curr.currentStockKg, 0);
 
@@ -40,13 +43,13 @@ export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: any) => voi
         <div className="relative z-10 max-w-2xl space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Verified Collector ID: {currentUser.id} • {currentUser.businessName}
+            {currentUser.isVerified ? 'Verified' : 'Unverified'} Collector ID: {currentUser.id} • {currentUser.businessName || currentUser.name}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
             {language === 'hi' ? 'आज का व्यापार एवं पिकअप' : "Today's Collection Operations"}
           </h1>
           <p className="text-xs sm:text-sm text-forest-200">
-            {pendingPickups.length} scheduled doorstep visits today • {nearbyListings.length} new nearby scrap listings waiting for bids.
+            {pendingPickups.length} scheduled doorstep visits • {nearbyListings.length} available scrap listings waiting for offers.
           </p>
 
           <div className="pt-2 flex flex-wrap gap-3">
@@ -103,10 +106,10 @@ export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: any) => voi
             <Scale className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-2xl font-black font-mono text-slate-900 mt-2">
-            {currentUser.greenScoreKg} <span className="text-xs text-slate-500 font-normal">kg</span>
+            {totalCollectedKg} <span className="text-xs text-slate-500 font-normal">kg</span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            Across {currentUser.completedPickups} transactions
+            Across {completedOrders.length} completed transactions
           </div>
         </div>
 
@@ -116,10 +119,10 @@ export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: any) => voi
             <Sparkles className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black font-mono text-amber-600 mt-2 flex items-center gap-1">
-            ★ {currentUser.rating || 4.8}
+            —
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            Digital scale calibrated & verified
+            Rating data is not available yet
           </div>
         </div>
 
@@ -254,4 +257,3 @@ export const KabadiwalaDashboard: React.FC<{ onOpenWeighing: (order: any) => voi
     </div>
   );
 };
-

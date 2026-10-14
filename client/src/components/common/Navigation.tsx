@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -30,7 +31,16 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({
   isOpen = false, 
   onClose 
 }) => {
-  const { role, activeTab, setActiveTab, t, listings, orders, verificationRequests, complaints } = useApp();
+  const { role, activeTab, setActiveTab, language, t, listings, orders, verificationRequests, complaints } = useApp();
+  const { user } = useAuth();
+  const roleTitle = user?.role === 'RECYCLER'
+    ? (language === 'hi' ? 'रीसाइकलर' : 'Recycler')
+    : t.roles[role].title;
+  const roleDescription = user?.role === 'RECYCLER'
+    ? (language === 'hi'
+      ? 'प्रोक्योरमेंट मार्केटप्लेस से पुनर्चक्रण योग्य सामग्री प्राप्त करें।'
+      : 'Source recyclable materials through the procurement marketplace.')
+    : t.roles[role].description;
 
   // Calculate dynamic badges
   const pendingOffersCount = listings.filter(l => l.status === 'pending' && l.offersCount > 0).length;
@@ -81,6 +91,7 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({
       case 'bulk_buyer':
         return [
           { id: 'dashboard', label: t.nav.dashboard, icon: LayoutDashboard },
+          { id: 'feed', label: language === 'hi' ? 'सामग्री देखें' : 'Available Materials', icon: Radio },
           { id: 'procurement', label: t.nav.procurement, icon: Factory },
           { id: 'published_rates', label: t.nav.publishedRates, icon: SlidersHorizontal },
           { id: 'orders', label: t.nav.orders, icon: Truck },
@@ -131,15 +142,15 @@ export const Sidebar: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({
           <div className="p-3.5 rounded-2xl bg-gradient-to-br from-mint-50 to-white border border-forest-100 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-forest-800">
-                {t.roles[role].badge}
+                {user?.role === 'RECYCLER' ? 'RECYCLER' : t.roles[role].badge}
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
             <h4 className="text-sm font-bold text-forest-950 mt-1">
-              {t.roles[role].title}
+              {roleTitle}
             </h4>
             <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-              {t.roles[role].description}
+              {roleDescription}
             </p>
           </div>
 
@@ -269,4 +280,3 @@ export const BottomNav: React.FC = () => {
     </nav>
   );
 };
-

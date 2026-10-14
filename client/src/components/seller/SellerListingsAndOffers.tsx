@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const SellerListingsAndOffers: React.FC = () => {
-  const { listings, offers, acceptOffer, setActiveTab, t, language, indicativeRates } = useApp();
+  const { listings, offers, acceptOffer, setActiveTab, t, language, indicativeRates, showToast } = useApp();
   const [selectedListingId, setSelectedListingId] = useState<string>(
     listings[0]?.id || ''
   );
@@ -262,8 +262,11 @@ export const SellerListingsAndOffers: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => {
-                                acceptOffer(selectedListing.id, offer.id);
-                                setActiveTab('orders');
+                                void acceptOffer(selectedListing.id, offer.id)
+                                  .then(() => setActiveTab('orders'))
+                                  .catch((error: unknown) => {
+                                    showToast(error instanceof Error ? error.message : 'Could not accept this offer.', 'error');
+                                  });
                               }}
                               className="px-4 py-2 rounded-xl bg-forest-800 hover:bg-forest-900 text-white font-bold text-xs shadow-sm shadow-forest-900/20 flex items-center gap-1.5 transition-colors"
                             >
@@ -288,4 +291,3 @@ export const SellerListingsAndOffers: React.FC = () => {
     </div>
   );
 };
-
