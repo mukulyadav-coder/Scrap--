@@ -2,7 +2,6 @@
 import uuid
 from pathlib import Path
 from typing import Any, Dict
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.config import settings
