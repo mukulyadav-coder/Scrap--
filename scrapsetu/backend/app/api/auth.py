@@ -2,7 +2,6 @@
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-
 from app.config import settings
 from app.schemas.auth import (
     AccessTokenResponse,
