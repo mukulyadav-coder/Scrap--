@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 from jose import jwt
-
 from app.config import settings
 from app.main import app
 from app.security.dependencies import _login_attempts
